@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<style>
-    .states {
-        stroke: rgb(221, 221, 255);
-        stroke-linejoin: round;
-    }
+<header>
+    <meta charset="utf-8">
+    <style>
+        .states {
+            stroke: rgb(221, 221, 255);
+            stroke-linejoin: round;
+        }
 
-    body {
+        body {
             font-family: 'Open Sans', sans-serif;
             font-size: 11px;
             font-weight: 300;
@@ -15,10 +16,43 @@
             text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff;
             cursor: default;
         }
-
-</style>
+    </style>
+    <!-- Google fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,300" rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Raleway' rel='stylesheet' type='text/css'>
+</header>
 
 <body>
+
+    <div>
+        <h1>Choropleth - Covid-19 no Brasil</h4>
+            <h3>Visualização de Dados</h5>
+                <hr />
+                <table style="text-align: left;">
+                    <tr>
+                        <td>Date:</td>
+                        <td>
+                            <select id="days" onchange="update()"></select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Column:</td>
+                        <td>
+                            <select id="column" onchange="update()"></select>
+                        </td>
+                    </tr>
+                </table>
+                <hr />
+    
+                <svg id="choropleth"></svg>
+                <br />
+                <hr />
+                <sub>
+                    Desenvolvido por Joaquim Pessôa Filho,<br />
+                    <b>Fonte:</b><a href="https://covid.saude.gov.br">https://covid.saude.gov.br</a>.
+                </sub>
+    </div>
+
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script src="http://d3js.org/topojson.v3.min.js"></script>
     <script src="https://d3js.org/d3-color.v1.min.js"></script>
@@ -28,15 +62,62 @@
 
     <script>
 
+        var day = "2020-04-14";
+        var column = [
+            {key: 'Casos Novos', value:'casosNovos'}, 
+            {key: 'Casos Acumulados', value: 'casosAcumulados'}, 
+            {key: 'Obitos Novos', value: 'obitosNovos'}, 
+            {key: 'Obitos Acumulados', value: 'obitosAcumulados'}, 
+        ];
+        var originalData = null;
+
+        function configure(data) {
+            const days = d3.nest()
+                .key(function (d) { return d.data; })
+                .entries(data);
+
+            d3.select("#days").selectAll("option")
+                .data(days)
+                .enter()
+                .append("option")
+                .text(function (d) { return d.key; })
+                .attr("value", function (d) { return d.key; });
+
+            d3.select("#column").selectAll("option")
+                .data(column)
+                .enter()
+                .append("option")
+                .text(function (d) { return d.key; })
+                .attr("value", function (d) { return d.value; });
+            
+            update();
+        }
+
+        function update() {
+            // Filtrar por data
+            day = document.getElementById("days").value;
+            data = originalData.filter(d => d.data === day);
+
+            // Filtrar por coluna
+            column = document.getElementById("column").value;
+            data = data.map(d => {
+                return {
+                    state: d.estado,
+                    value: d[column]
+                }
+            });
+            generateMap(data);
+        }
 
         function generateMap(data) {
+            document.getElementById("choropleth").innerHTML = "";
             var width = 900, height = 650;
 
             var color = d3.scaleLinear()
                 .domain([0, d3.max(data, d => +d.value)])
-                .range([0,1]);
+                .range([0, 1]);
 
-            var svg = d3.select("body").append("svg")
+            var svg = d3.select("#choropleth")
                 .attr("width", width)
                 .attr("height", height);
 
@@ -56,43 +137,22 @@
                     .selectAll("path")
                     .data(states.features)
                     .enter().append("path")
-                    .style('fill', function (d) { 
-                         var state = d.properties.name;
+                    .style('fill', function (d) {
+                        var state = d.properties.name;
                         state = data.find(x => x.state === state);
                         console.log(state);
-                        return d3.interpolateBlues(color(state.value)); 
+                        return d3.interpolateBlues(color(state.value));
                     })
                     .attr("d", path);
-                    console.log("color 0", color(0));
-                    console.log("color 9371", color(9371));
+                console.log("color 0", color(0));
+                console.log("color 9371", color(9371));
             });
         }
 
+        // First read
         d3.csv("data_estados.csv").then(function (data) {
-            console.log("original", data);
-
-            // Filtrar por data
-            // TODO: criar filtro na interface
-            const date = "2020-04-14";
-            data = data.filter(d => d.data === date);
-
-            console.log("filtrada", data);
-
-            // Filtrar por dados
-            // TODO: criar filtro na interface
-            const dataFilter = ['casosNovos', 'casosAcumulados', 
-                                'obitosNovos', 'obitosAcumulados'][1];
-            data = data.map(d => {
-                return {
-                    state: d.estado,
-                    value: d[dataFilter]
-                }
-            });
-
-            console.log("filtrado novamente", data)
-
-            console.log(d3.max(data, d => +d.value));
-            generateMap(data);
+            originalData = data;
+            configure(originalData);
         });
 
     </script>
