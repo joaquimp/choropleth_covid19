@@ -58,7 +58,7 @@
     <script src="https://d3js.org/d3-color.v1.min.js"></script>
     <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
-
+    <script src="js/conversor.js"></script>
 
     <script>
 
@@ -72,6 +72,11 @@
         var originalData = null;
 
         function configure(data) {
+            originalData = originalData.map(function(row) {
+                row.estado = converterEstados(row.estado);   
+                return row;
+            });
+
             const days = d3.nest()
                 .key(function (d) { return d.data; })
                 .entries(data);
@@ -138,22 +143,20 @@
                     .data(states.features)
                     .enter().append("path")
                     .style('fill', function (d) {
-                        var state = d.properties.name;
-                        state = data.find(x => x.state === state);
-                        console.log(state);
+                        const stateName = d.properties.name;
+                        var state = data.find(x => x.state === stateName);
+                        
                         return d3.interpolateBlues(color(state.value));
                     })
                     .attr("d", path);
-                console.log("color 0", color(0));
-                console.log("color 9371", color(9371));
             });
         }
 
-        // First read
-        d3.csv("data_estados.csv").then(function (data) {
-            originalData = data;
+        d3.text('data.csv').then(function(raw) {
+            var dsv = d3.dsvFormat(';');
+            originalData = dsv.parse(raw);
             configure(originalData);
-        });
+        })
 
     </script>
 </body>
