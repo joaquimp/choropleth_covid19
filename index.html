@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+    .states {
+        stroke: rgb(221, 221, 255);
+        stroke-linejoin: round;
+    }
+
+    body {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 11px;
+            font-weight: 300;
+            fill: #242424;
+            text-align: center;
+            text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff;
+            cursor: default;
+        }
+
+</style>
+
+<body>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="http://d3js.org/topojson.v3.min.js"></script>
+    <script src="https://d3js.org/d3-color.v1.min.js"></script>
+    <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+
+    <script>
+
+
+        function generateMap(data) {
+            var width = 900, height = 650;
+
+            var color = d3.scaleLinear()
+                .domain([0, d3.max(data, d => +d.value)])
+                .range([0,1]);
+
+            var svg = d3.select("body").append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+            var projection = d3.geoMercator()
+                .center([-55, -10])
+                .scale(750);
+
+            var path = d3.geoPath()
+                .projection(projection);
+
+            d3.json("br-states.json").then(function (brStates) {
+
+                const states = topojson.feature(brStates, brStates.objects.states);
+
+                svg.append("g")
+                    .attr("class", "states")
+                    .selectAll("path")
+                    .data(states.features)
+                    .enter().append("path")
+                    .style('fill', function (d) { 
+                         var state = d.properties.name;
+                        state = data.find(x => x.state === state);
+                        console.log(state);
+                        return d3.interpolateBlues(color(state.value)); 
+                    })
+                    .attr("d", path);
+                    console.log("color 0", color(0));
+                    console.log("color 9371", color(9371));
+            });
+        }
+
+        d3.csv("data_estados.csv").then(function (data) {
+            console.log("original", data);
+
+            // Filtrar por data
+            // TODO: criar filtro na interface
+            const date = "2020-04-14";
+            data = data.filter(d => d.data === date);
+
+            console.log("filtrada", data);
+
+            // Filtrar por dados
+            // TODO: criar filtro na interface
+            const dataFilter = ['casosNovos', 'casosAcumulados', 
+                                'obitosNovos', 'obitosAcumulados'][1];
+            data = data.map(d => {
+                return {
+                    state: d.estado,
+                    value: d[dataFilter]
+                }
+            });
+
+            console.log("filtrado novamente", data)
+
+            console.log(d3.max(data, d => +d.value));
+            generateMap(data);
+        });
+
+    </script>
+</body>
